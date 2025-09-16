@@ -9,7 +9,7 @@ a1
 ```
 **Image**
 ```
-docker build -t ravinderjit/assignment1 .
+docker pull ravinderjit/assignment1
 ```
 **Container**
 ```

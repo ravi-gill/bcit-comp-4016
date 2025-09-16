@@ -9,11 +9,11 @@ a1
 ```
 **Image**
 ```
-docker build -t prabhjotlalli/assignment1 .
+docker build -t ravinderjit/assignment1 .
 ```
 **Container**
 ```
-docker run -d -p 8080:8080 prabhjotlalli/assignment1
+docker run -d -p 8080:8080 ravinderjit/assignment1
 ```
 **cURL HTTP**
 ```

@@ -1,0 +1,4 @@
+Repository: https://github.com/ravi-gill/bcit-comp-4016.git
+Image: ravinderjit/assignment1 (docker pull ravinderjit/assignment1)
+Command: docker run -d -p 8080:8080 ravinderjit/assignment1
+Comment: HTTP responses are appended with '\n' - e.g., curl localhost:8080/foo will return "bar\n"

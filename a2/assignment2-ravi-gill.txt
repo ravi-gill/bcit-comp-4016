@@ -1,5 +1,5 @@
 Repository: https://github.com/ravi-gill/bcit-comp-4016.git
-Image: ravinderjit/assignment2 (docker pull ravinderjit/assignment2)
+Image: docker.io/ravinderjit/assignment2:latest (docker pull ravinderjit/assignment2)
 Command(s): 
     kubectl apply -f k8s-config.yaml
     kubectl get all -n rgill201

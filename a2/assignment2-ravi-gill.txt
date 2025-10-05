@@ -5,3 +5,5 @@ Command(s):
     kubectl apply -f k8s-config.yaml
     kubectl get all -n rgill201
 Comment(s):
+    Please see a2 directory for assignment 2 files
+

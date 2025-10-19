@@ -1,0 +1,58 @@
+pipeline {
+    agent { label 'jenkins-agent' }
+
+    environment {
+        // Define the application name and tag
+        APP_IMAGE_NAME = 'ravinderjit/project-a1'
+        APP_PORT = '8080'
+        
+        // Use the explicit path you found in diagnostics
+        DOCKER_BIN = '/usr/bin/docker' 
+        
+        // Remove unused K8S and Docker Hub variables for this test
+    }
+
+    stages {
+        stage('Clone Source Code') {
+            steps {
+                // 1. Clones code into the agent's workspace (e.g., bcit-comp-4016)
+                checkout scm
+            }
+        }
+
+        stage('Build and Run Container') {
+            steps {
+                script {
+                    // Stop/remove any existing container with the same name before running a new one
+                    sh "${DOCKER_BIN} stop ${APP_IMAGE_NAME} || true"
+                    sh "${DOCKER_BIN} rm ${APP_IMAGE_NAME} || true"
+                    
+                    // 2. Change directory to the a1 subdirectory for the Dockerfile
+                    dir('a1') {
+                        // 3. Build the image using the specified tag
+                        sh "${DOCKER_BIN} build -t ${APP_IMAGE_NAME}:latest ."
+                    }
+                    
+                    // 4. Run the container locally on the Docker host (Mac's Docker Desktop VM)
+                    sh "${DOCKER_BIN} run -d -p ${APP_PORT}:${APP_PORT} --name ${APP_IMAGE_NAME} ${APP_IMAGE_NAME}:latest"
+                    
+                    sh "echo '--- SUCCESS! Application is running. ---'"
+                    sh "echo 'Access application at: http://localhost:${APP_PORT}'"
+                }
+            }
+        }
+        
+        // Removed stages: Push to Docker Hub and Deploy to Kubernetes
+    }
+    
+    // Optional post-build step to clean up (keep the container running for your manual test)
+    post {
+        failure {
+            sh "echo 'Pipeline failed. Check build logs for errors.'"
+        }
+        success {
+            // Keep the container running for your manual check.
+            sh "echo 'Container is left running for manual inspection.'"
+        }
+    }
+}

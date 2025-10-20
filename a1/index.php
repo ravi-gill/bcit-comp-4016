@@ -16,7 +16,7 @@ if (false !== $pos = strpos($uri, '?')) {
 // GET request for /foo
 if ($method === 'GET' && $uri === '/foo') {
     http_response_code(200);
-    echo "BAR\n";
+    echo "bar\n";
     exit;
 }
 

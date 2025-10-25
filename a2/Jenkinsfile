@@ -2,18 +2,17 @@ pipeline {
     agent { label 'jenkins-agent' }
 
     environment {
-        // Define the application name (user/repo)
         APP_IMAGE_NAME = 'ravinderjit/assignment2'
-        
-        // Tools and Credentials
-        DOCKER_BIN = '/usr/bin/docker'
-        KUBECTL_BIN = '/usr/local/bin/kubectl'
+
         DOCKER_CREDS_ID = 'dockerhub-creds'
-        
-        // Kubernetes Configuration Variables
-        K8S_NAMESPACE = 'rgill201' // Matches the namespace in k8s-manifest.yaml
-        K8S_MANIFEST_FILE = 'k8s-manifest.yaml' // Assuming manifest is in the a2 subdirectory
-        K8S_DEPLOYMENT_NAME = 'a2-deployment' // Name of the Deployment resource to check rollout status
+        DOCKER_BIN = '/usr/bin/docker'
+
+        KUBECTL_BIN = '/usr/local/bin/kubectl'
+            
+        K8S_MANIFEST_FILE = 'k8s-manifest.yaml'
+        K8S_NAMESPACE = 'rgill201' // Namespace in k8s-manifest.yaml
+        K8S_RBAC_FILE = 'rbac-fix.yaml' // RBAC
+        K8S_DEPLOYMENT_NAME = 'a2-deployment' // Deployment resource to check rollout status
     }
 
     stages {
@@ -51,30 +50,30 @@ pipeline {
             }
         }
 
+        stage('Set up Namespace & RBAC') {
+            steps {
+                dir('a2') {
+                    sh "echo 'Creating/Ensuring Namespace and RBAC Permissions...'"
+                    
+                    // 1. ENSURE NAMESPACE EXISTS (Idempotent creation)
+                    sh "${KUBECTL_BIN} create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | ${KUBECTL_BIN} apply -f -"
+                    
+                    // 2. ENSURE RBAC BINDING EXISTS (Idempotent creation)
+                    // The 'apply' command is idempotent and safer than 'create' here
+                    sh "${KUBECTL_BIN} apply -f ${K8S_RBAC_FILE} -n ${K8S_NAMESPACE}"
+                }
+            }
+        } 
+
         stage('Deploy to K8s') {
             steps {
                 dir('a2') {
-                    sh "echo 'Reapplying RBAC configuration to bypass GET deadlock...'"
-                    
-                    // 1. DELETE: Use the guaranteed fail-safe delete flag
-                    // This command will attempt to delete the old RoleBinding, but if it exists 
-                    // and fails due to permission denied, we still need to proceed.
-                    // Since the previous log showed delete failed, we rely on the create/apply logic below.
-                    sh "${KUBECTL_BIN} delete rolebinding jenkins-rgill201-binding -n ${K8S_NAMESPACE} --ignore-not-found=true || true"
-
-
-                    // 2. APPLY RBAC: Use 'create' for the first time, as it skips the 'get' check
-                    // This should succeed because the object is already deleted, OR it fails the RBAC check.
-                    // sh "echo 'Attempting to create RoleBinding...'"
-                    // sh "${KUBECTL_BIN} create -f rbac-fix.yaml -n ${K8S_NAMESPACE}"
-
-                    // 3. APPLY APPLICATION MANIFESTS
-                    sh "echo 'Applying K8s manifest for deployment ${K8S_DEPLOYMENT_NAME}'"
-                    
-                    // Use 'apply' for the application manifests, but use the cluster-admin's power.
+                    // 1. APPLY APPLICATION MANIFESTS (Initial CM/Secret/Service/Deployment)
+                    // The apply command is now safe because the Namespace and RoleBinding already exist.
+                    sh "echo 'Applying K8s application manifests...'"
                     sh "${KUBECTL_BIN} apply -f ${K8S_MANIFEST_FILE} -n ${K8S_NAMESPACE}"
                     
-                    // 4. Wait for the rolling update to complete
+                    // 2. Wait for the rolling update to complete
                     sh "${KUBECTL_BIN} rollout status deployment/${K8S_DEPLOYMENT_NAME} -n ${K8S_NAMESPACE}"
                 }
             }

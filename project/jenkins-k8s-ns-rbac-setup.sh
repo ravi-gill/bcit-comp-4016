@@ -3,7 +3,7 @@
 # Script to create namespace and grant Jenkins access
 
 TARGET_NAMESPACE=$1
-RBAC_FILE="rbac-fix" # Path to your RoleBinding definition
+RBAC_FILE="rbac.yaml" # Path to your RoleBinding definition
 
 if [ -z "$TARGET_NAMESPACE" ]; then
   echo "Usage: $0 <namespace_name>"

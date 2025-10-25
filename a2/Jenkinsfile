@@ -50,20 +50,20 @@ pipeline {
             }
         }
 
-        stage('Set up Namespace & RBAC') {
-            steps {
-                dir('a2') {
-                    sh "echo 'Creating/Ensuring Namespace and RBAC Permissions...'"
+        // stage('Set up Namespace & RBAC') {
+        //     steps {
+        //         dir('a2') {
+        //             sh "echo 'Creating/Ensuring Namespace and RBAC Permissions...'"
                     
-                    // 1. ENSURE NAMESPACE EXISTS (Idempotent creation)
-                    sh "${KUBECTL_BIN} create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | ${KUBECTL_BIN} apply -f -"
+        //             // 1. ENSURE NAMESPACE EXISTS (Idempotent creation)
+        //             sh "${KUBECTL_BIN} create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | ${KUBECTL_BIN} apply -f -"
                     
-                    // 2. ENSURE RBAC BINDING EXISTS (Idempotent creation)
-                    // The 'apply' command is idempotent and safer than 'create' here
-                    sh "${KUBECTL_BIN} apply -f ${K8S_RBAC_FILE} -n ${K8S_NAMESPACE}"
-                }
-            }
-        } 
+        //             // 2. ENSURE RBAC BINDING EXISTS (Idempotent creation)
+        //             // The 'apply' command is idempotent and safer than 'create' here
+        //             sh "${KUBECTL_BIN} apply -f ${K8S_RBAC_FILE} -n ${K8S_NAMESPACE}"
+        //         }
+        //     }
+        // } 
 
         stage('Deploy to K8s') {
             steps {

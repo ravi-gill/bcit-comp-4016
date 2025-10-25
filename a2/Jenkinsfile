@@ -65,8 +65,8 @@ pipeline {
                     sh "echo 'Applying K8s manifest for deployment ${K8S_DEPLOYMENT_NAME}'"
                     
                     // Apply the updated manifest to the target namespace
-                    sh "${KUBECTL_BIN} apply -f ${K8S_MANIFEST_FILE} -n ${K8S_NAMESPACE}"
-                    
+                    // Bypasses the GET operation and forces the update with --overwrite=true
+                    sh "${KUBECTL_BIN} apply -f ${K8S_MANIFEST_FILE} -n ${K8S_NAMESPACE} --overwrite=true"                    
                     // Wait for the rolling update to complete and ensure Pods are ready
                     sh "${KUBECTL_BIN} rollout status deployment/${K8S_DEPLOYMENT_NAME} -n ${K8S_NAMESPACE}"
                 }

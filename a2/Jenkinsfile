@@ -65,8 +65,8 @@ pipeline {
 
                     // 2. APPLY RBAC: Use 'create' for the first time, as it skips the 'get' check
                     // This should succeed because the object is already deleted, OR it fails the RBAC check.
-                    sh "echo 'Attempting to create RoleBinding...'"
-                    sh "${KUBECTL_BIN} create -f rbac-fix.yaml -n ${K8S_NAMESPACE}"
+                    // sh "echo 'Attempting to create RoleBinding...'"
+                    // sh "${KUBECTL_BIN} create -f rbac-fix.yaml -n ${K8S_NAMESPACE}"
 
                     // 3. APPLY APPLICATION MANIFESTS
                     sh "echo 'Applying K8s manifest for deployment ${K8S_DEPLOYMENT_NAME}'"

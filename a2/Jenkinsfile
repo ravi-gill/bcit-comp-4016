@@ -11,7 +11,7 @@ pipeline {
             
         K8S_MANIFEST_FILE = 'k8s-manifest.yaml'
         K8S_NAMESPACE = 'rgill201' // Namespace in k8s-manifest.yaml
-        K8S_RBAC_FILE = 'rbac-fix.yaml' // RBAC
+        // K8S_RBAC_FILE = 'rbac-fix.yaml' // RBAC
         K8S_DEPLOYMENT_NAME = 'a2-deployment' // Deployment resource to check rollout status
     }
 

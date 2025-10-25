@@ -35,34 +35,29 @@ pipeline {
             }
         }
         
-        // --- NEW STAGE: PUSH TO DOCKER HUB ---
         stage('Push to Docker Hub') {
             steps {
-                // Injects Docker Hub credentials into agent's environment
-                withCredentials([usernamePassword(credentialsId: DOCKER_CREDS_ID,
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
                                                  usernameVariable: 'DOCKER_USER_VAR',
                                                  passwordVariable: 'DOCKER_PASS_VAR')]) {
                     sh """
-                        echo 'Logging into Docker Hub...'
-                        # Log in using the injected variables
-                        ${DOCKER_BIN} login -u $DOCKER_USER_VAR --password-stdin <<< "$DOCKER_PASS_VAR"
+                        echo 'Logging into Docker Hub ...'                        
+                        echo "$DOCKER_PASS_VAR" | ${DOCKER_BIN} login -u $DOCKER_USER_VAR --password-stdin
                         
-                        echo 'Pushing image to Docker Hub...'
-                        # Push the image tagged with the build number
-                        ${DOCKER_BIN} push ${APP_IMAGE_NAME}:${env.BUILD_NUMBER}
+                        echo 'Pushing image to Docker Hub ...'
+                        ${DOCKER_BIN} push ${APP_IMAGE_NAME}:latest
                         
-                        # Clean up: Log out after pushing
                         ${DOCKER_BIN} logout
                     """
                 }
             }
         }
-        // --- END NEW STAGE ---
 
         stage('Run Container Locally') {
             steps {
                 // Run the container locally using the newly built image
-                sh "${DOCKER_BIN} run -d -p ${APP_PORT}:${APP_PORT} --name ${APP_CONTAINER_NAME} ${APP_IMAGE_NAME}:${env.BUILD_NUMBER}"
+                // sh "${DOCKER_BIN} run -d -p ${APP_PORT}:${APP_PORT} --name ${APP_CONTAINER_NAME} ${APP_IMAGE_NAME}:${env.BUILD_NUMBER}"
+                sh "${DOCKER_BIN} run -d -p ${APP_PORT}:${APP_PORT} --name ${APP_CONTAINER_NAME} ${APP_IMAGE_NAME}:latest
             }
         }
     }

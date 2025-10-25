@@ -2,13 +2,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: jenkins-rgill201-binding
+  name: jenkins-<<target-namespace>>-binding
   namespace: <<target-namespace>> # Namespace to grant Jenkins access to
 subjects:
 - kind: ServiceAccount
-  name: cluster-admin # Name Jenkins ServiceAccount (from jenkins-k8s)
+  name: cluster-admin # Jenkins ServiceAccount name
   namespace: jenkins-k8s # Namespace where the ServiceAccount lives
 roleRef:
   kind: ClusterRole
-  name: edit # Grants permission to manage resources in the rgill201 namespace
+  name: edit # Grants permission to manage resources in the <<target-namespace>>
   apiGroup: rbac.authorization.k8s.io

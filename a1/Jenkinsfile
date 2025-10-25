@@ -57,7 +57,7 @@ pipeline {
             steps {
                 // Run the container locally using the newly built image
                 // sh "${DOCKER_BIN} run -d -p ${APP_PORT}:${APP_PORT} --name ${APP_CONTAINER_NAME} ${APP_IMAGE_NAME}:${env.BUILD_NUMBER}"
-                sh "${DOCKER_BIN} run -d -p ${APP_PORT}:${APP_PORT} --name ${APP_CONTAINER_NAME} ${APP_IMAGE_NAME}:latest
+                sh "${DOCKER_BIN} run -d -p ${APP_PORT}:${APP_PORT} --name ${APP_CONTAINER_NAME} ${APP_IMAGE_NAME}:latest"
             }
         }
     }

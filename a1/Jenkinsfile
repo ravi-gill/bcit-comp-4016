@@ -2,10 +2,14 @@ pipeline {
     agent { label 'jenkins-agent' }
 
     environment {
-        APP_IMAGE_NAME = 'ravinderjit/project-a1'
+        // Define the image name (must include Docker Hub username for push)
+        APP_IMAGE_NAME = 'ravinderjit/assignment1'
         APP_CONTAINER_NAME = 'project_a1'
         APP_PORT = '8080'        
-        DOCKER_BIN = '/usr/bin/docker'         
+        DOCKER_BIN = '/usr/bin/docker'
+        
+        // Docker Hub credentials ID in Jenkins
+        DOCKER_CREDS_ID = 'dockerhub-creds'
     }
 
     stages {
@@ -15,17 +19,53 @@ pipeline {
             }
         }
 
-    stage('Build and Run Container') {
+        stage('Build Image') {
             steps {
+                // Stop and remove container (if it exists)
                 sh "${DOCKER_BIN} stop ${APP_CONTAINER_NAME} || true"
-                sh "${DOCKER_BIN} rm ${APP_CONTAINER_NAME} || true"                
+                sh "${DOCKER_BIN} rm ${APP_CONTAINER_NAME} || true"
+                
                 dir('a1') {
+                    // Tag the image with the unique Jenkins BUILD_NUMBER for versioning
+                    // sh "${DOCKER_BIN} build -t ${APP_IMAGE_NAME}:${env.BUILD_NUMBER} ."
+
+                    // Or, simply tag as 'latest'
                     sh "${DOCKER_BIN} build -t ${APP_IMAGE_NAME}:latest ."
-                }                    
-                sh "${DOCKER_BIN} run -d -p ${APP_PORT}:${APP_PORT} --name ${APP_CONTAINER_NAME} ${APP_IMAGE_NAME}:latest"                    
+                }
             }
-        }        
-    }  
+        }
+        
+        // --- NEW STAGE: PUSH TO DOCKER HUB ---
+        stage('Push to Docker Hub') {
+            steps {
+                // Injects Docker Hub credentials into agent's environment
+                withCredentials([usernamePassword(credentialsId: DOCKER_CREDS_ID,
+                                                 usernameVariable: 'DOCKER_USER_VAR',
+                                                 passwordVariable: 'DOCKER_PASS_VAR')]) {
+                    sh """
+                        echo 'Logging into Docker Hub...'
+                        # Log in using the injected variables
+                        ${DOCKER_BIN} login -u $DOCKER_USER_VAR --password-stdin <<< "$DOCKER_PASS_VAR"
+                        
+                        echo 'Pushing image to Docker Hub...'
+                        # Push the image tagged with the build number
+                        ${DOCKER_BIN} push ${APP_IMAGE_NAME}:${env.BUILD_NUMBER}
+                        
+                        # Clean up: Log out after pushing
+                        ${DOCKER_BIN} logout
+                    """
+                }
+            }
+        }
+        // --- END NEW STAGE ---
+
+        stage('Run Container Locally') {
+            steps {
+                // Run the container locally using the newly built image
+                sh "${DOCKER_BIN} run -d -p ${APP_PORT}:${APP_PORT} --name ${APP_CONTAINER_NAME} ${APP_IMAGE_NAME}:${env.BUILD_NUMBER}"
+            }
+        }
+    }
 
     post {
         failure {
@@ -33,6 +73,8 @@ pipeline {
         }
         success {
             sh "echo 'Container is running. Access application at: http://localhost:${APP_PORT}'"
+            // sh "echo 'Image pushed to Docker Hub with tag: ${env.BUILD_NUMBER}'"
+            sh "echo 'Image pushed to Docker Hub'"
         }
     }
 }

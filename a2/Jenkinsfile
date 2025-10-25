@@ -1,0 +1,86 @@
+pipeline {
+    agent { label 'jenkins-agent' }
+
+    environment {
+        // Define the application name (user/repo)
+        APP_IMAGE_NAME = 'ravinderjit/assignment2'
+        
+        // Tools and Credentials
+        DOCKER_BIN = '/usr/bin/docker'
+        KUBECTL_BIN = '/usr/local/bin/kubectl'
+        DOCKER_CREDS_ID = 'dockerhub-creds'
+        
+        // Kubernetes Configuration Variables
+        K8S_NAMESPACE = 'rgill201' // Matches the namespace in k8s-manifest.yaml
+        K8S_MANIFEST_FILE = 'k8s-manifest.yaml' // Assuming manifest is in the a2 subdirectory
+        K8S_DEPLOYMENT_NAME = 'a2-deployment' // Name of the Deployment resource to check rollout status
+    }
+
+    stages {
+        stage('Clone Source Code') {
+            steps {
+                // Clones the repo containing the Jenkinsfile and the application source code/manifests
+                checkout scm
+            }
+        }
+
+        stage('Build Image') {
+            steps {
+                // Use the unique BUILD_NUMBER for versioning in Docker Hub and Kubernetes
+                dir('a2') {
+                    sh "${DOCKER_BIN} build -t ${APP_IMAGE_NAME}:latest ."
+                }
+            }
+        }
+        
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: DOCKER_CREDS_ID,
+                                                 usernameVariable: 'DOCKER_USER_VAR',
+                                                 passwordVariable: 'DOCKER_PASS_VAR')]) {
+                    sh """
+                        echo 'Logging into Docker Hub...'                        
+                        echo "$DOCKER_PASS_VAR" | ${DOCKER_BIN} login -u $DOCKER_USER_VAR --password-stdin
+                        
+                        echo 'Pushing image to Docker Hub...'
+                        ${DOCKER_BIN} push ${APP_IMAGE_NAME}:latest
+                        
+                        ${DOCKER_BIN} logout
+                    """
+                }
+            }
+        }
+
+        // --- NEW/UPDATED STAGE: DEPLOY TO KUBERNETES ---
+        stage('Deploy to K8s') {
+            steps {
+                // Change directory to ensure access to the k8s-manifest.yaml file
+                dir('a2') {
+                    // CRITICAL STEP: Use sed to update the manifest with the new image tag.
+                    // The image field in k8s-manifest.yaml is currently ravinderjit/assignment2:latest
+
+                    // We must replace 'latest' with the actual BUILD_NUMBER tag.
+                    // sh "sed -i 's|${APP_IMAGE_NAME}:latest|${APP_IMAGE_NAME}:latest|g' k8s-manifest.yaml"
+                    
+                    sh "echo 'Applying K8s manifest for deployment ${K8S_DEPLOYMENT_NAME}'"
+                    
+                    // Apply the updated manifest to the target namespace
+                    sh "${KUBECTL_BIN} apply -f ${K8S_MANIFEST_FILE} -n ${K8S_NAMESPACE}"
+                    
+                    // Wait for the rolling update to complete and ensure Pods are ready
+                    sh "${KUBECTL_BIN} rollout status deployment/${K8S_DEPLOYMENT_NAME} -n ${K8S_NAMESPACE}"
+                }
+            }
+        }
+        // --- End Deploy Stage ---
+    }
+
+    post {
+        failure {
+            sh "echo 'Pipeline failed. Check build logs for errors.'"
+        }
+        success {
+            sh "echo 'Application deployed to K8s. Access via http://localhost:30000'"
+        }
+    }
+}

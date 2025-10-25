@@ -54,29 +54,31 @@ pipeline {
         stage('Deploy to K8s') {
             steps {
                 dir('a2') {
-                    // 1. CLEAN UP/REAPPLY RBAC (THE CRITICAL STEP)
                     sh "echo 'Reapplying RBAC configuration to bypass GET deadlock...'"
                     
-                    // Delete the old one (if it exists) to prevent conflict
-                    sh "${KUBECTL_BIN} delete rolebinding jenkins-rgill201-binding -n ${K8S_NAMESPACE} || true"
+                    // 1. DELETE: Use the guaranteed fail-safe delete flag
+                    // This command will attempt to delete the old RoleBinding, but if it exists 
+                    // and fails due to permission denied, we still need to proceed.
+                    // Since the previous log showed delete failed, we rely on the create/apply logic below.
+                    sh "${KUBECTL_BIN} delete rolebinding jenkins-rgill201-binding -n ${K8S_NAMESPACE} --ignore-not-found=true || true"
 
-                    // Apply the RoleBinding first to ensure permissions are up to date
-                    // ASSUMPTION: The RoleBinding manifest is in rbac-fix.yaml
-                    sh "${KUBECTL_BIN} apply -f rbac-fix.yaml -n ${K8S_NAMESPACE}"
 
-                    // 2. APPLY APPLICATION MANIFESTS
+                    // 2. APPLY RBAC: Use 'create' for the first time, as it skips the 'get' check
+                    // This should succeed because the object is already deleted, OR it fails the RBAC check.
+                    sh "echo 'Attempting to create RoleBinding...'"
+                    sh "${KUBECTL_BIN} create -f rbac-fix.yaml -n ${K8S_NAMESPACE}"
+
+                    // 3. APPLY APPLICATION MANIFESTS
                     sh "echo 'Applying K8s manifest for deployment ${K8S_DEPLOYMENT_NAME}'"
                     
-                    // Apply the application manifests (which DO NOT contain the RoleBinding now)
-                    // Use --overwrite=true just in case, but it should work cleanly now
-                    sh "${KUBECTL_BIN} apply -f ${K8S_MANIFEST_FILE} -n ${K8S_NAMESPACE} --overwrite=true"
+                    // Use 'apply' for the application manifests, but use the cluster-admin's power.
+                    sh "${KUBECTL_BIN} apply -f ${K8S_MANIFEST_FILE} -n ${K8S_NAMESPACE}"
                     
-                    // Wait for the rolling update to complete and ensure Pods are ready
+                    // 4. Wait for the rolling update to complete
                     sh "${KUBECTL_BIN} rollout status deployment/${K8S_DEPLOYMENT_NAME} -n ${K8S_NAMESPACE}"
                 }
             }
         }
-        // --- End Deploy Stage ---
     }
 
     post {

@@ -51,21 +51,26 @@ pipeline {
             }
         }
 
-        // --- NEW/UPDATED STAGE: DEPLOY TO KUBERNETES ---
         stage('Deploy to K8s') {
             steps {
-                // Change directory to ensure access to the k8s-manifest.yaml file
                 dir('a2') {
-                    // CRITICAL STEP: Use sed to update the manifest with the new image tag.
-                    // The image field in k8s-manifest.yaml is currently ravinderjit/assignment2:latest
-
-                    // We must replace 'latest' with the actual BUILD_NUMBER tag.
-                    // sh "sed -i 's|${APP_IMAGE_NAME}:latest|${APP_IMAGE_NAME}:latest|g' k8s-manifest.yaml"
+                    // 1. CLEAN UP/REAPPLY RBAC (THE CRITICAL STEP)
+                    sh "echo 'Reapplying RBAC configuration to bypass GET deadlock...'"
                     
+                    // Delete the old one (if it exists) to prevent conflict
+                    sh "${KUBECTL_BIN} delete rolebinding jenkins-rgill201-binding -n ${K8S_NAMESPACE} || true"
+
+                    // Apply the RoleBinding first to ensure permissions are up to date
+                    // ASSUMPTION: The RoleBinding manifest is in rbac-fix.yaml
+                    sh "${KUBECTL_BIN} apply -f rbac-fix.yaml -n ${K8S_NAMESPACE}"
+
+                    // 2. APPLY APPLICATION MANIFESTS
                     sh "echo 'Applying K8s manifest for deployment ${K8S_DEPLOYMENT_NAME}'"
                     
-                    // Apply the updated manifest to the target namespace                    
-                    sh "${KUBECTL_BIN} apply -f ${K8S_MANIFEST_FILE} -n ${K8S_NAMESPACE} --force"                    
+                    // Apply the application manifests (which DO NOT contain the RoleBinding now)
+                    // Use --overwrite=true just in case, but it should work cleanly now
+                    sh "${KUBECTL_BIN} apply -f ${K8S_MANIFEST_FILE} -n ${K8S_NAMESPACE} --overwrite=true"
+                    
                     // Wait for the rolling update to complete and ensure Pods are ready
                     sh "${KUBECTL_BIN} rollout status deployment/${K8S_DEPLOYMENT_NAME} -n ${K8S_NAMESPACE}"
                 }

@@ -11,7 +11,6 @@ pipeline {
             
         K8S_MANIFEST_FILE = 'k8s-manifest.yaml'
         K8S_NAMESPACE = 'rgill201' // Namespace in k8s-manifest.yaml
-        // K8S_RBAC_FILE = 'rbac-fix.yaml' // RBAC
         K8S_DEPLOYMENT_NAME = 'a2-deployment' // Deployment resource to check rollout status
     }
 
@@ -25,7 +24,6 @@ pipeline {
 
         stage('Build Image') {
             steps {
-                // Use the unique BUILD_NUMBER for versioning in Docker Hub and Kubernetes
                 dir('a2') {
                     sh "${DOCKER_BIN} build -t ${APP_IMAGE_NAME}:latest ."
                 }
@@ -50,29 +48,11 @@ pipeline {
             }
         }
 
-        // stage('Set up Namespace & RBAC') {
-        //     steps {
-        //         dir('a2') {
-        //             sh "echo 'Creating/Ensuring Namespace and RBAC Permissions...'"
-                    
-        //             // 1. ENSURE NAMESPACE EXISTS (Idempotent creation)
-        //             sh "${KUBECTL_BIN} create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | ${KUBECTL_BIN} apply -f -"
-                    
-        //             // 2. ENSURE RBAC BINDING EXISTS (Idempotent creation)
-        //             // The 'apply' command is idempotent and safer than 'create' here
-        //             sh "${KUBECTL_BIN} apply -f ${K8S_RBAC_FILE} -n ${K8S_NAMESPACE}"
-        //         }
-        //     }
-        // } 
-
         stage('Deploy to K8s') {
             steps {
                 dir('a2') {
-                    // 1. APPLY APPLICATION MANIFESTS (Initial CM/Secret/Service/Deployment)
-                    // The apply command is now safe because the Namespace and RoleBinding already exist.
                     sh "echo 'Applying K8s application manifests...'"
-                    sh "${KUBECTL_BIN} apply -f ${K8S_MANIFEST_FILE} -n ${K8S_NAMESPACE}"
-                    
+                    sh "${KUBECTL_BIN} apply -f ${K8S_MANIFEST_FILE} -n ${K8S_NAMESPACE}"                    
                     // 2. Wait for the rolling update to complete
                     sh "${KUBECTL_BIN} rollout status deployment/${K8S_DEPLOYMENT_NAME} -n ${K8S_NAMESPACE}"
                 }

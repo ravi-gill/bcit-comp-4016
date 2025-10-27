@@ -1,0 +1,222 @@
+# Set namespace for main application
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rgill201
+---
+
+# Set config map
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: a2-config-map
+  namespace: rgill201
+data:
+  # Config map key/value pair
+  configValue: snake
+---
+
+# Set secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: a2-secret
+  namespace: rgill201
+type: Opaque
+data: 
+  # Base64 encoded value of "secretSnake" 
+  secretValue: c2VjcmV0U25ha2U=
+---
+
+# Set namespace for (readiness) probe
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: probe
+---
+
+# Set probe service deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: a3-probe-deployment
+  namespace: probe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: a3-probe-pod
+  template:
+    metadata:
+      labels:
+        app: a3-probe-pod
+    spec:
+      containers:
+      - name: a3-probe-container
+        image: ravinderjit/assignment3:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+---
+
+# Set probe service (called by StatefulSet)
+apiVersion: v1
+kind: Service
+metadata:
+  name: a3-probe-service
+  namespace: probe
+spec:
+  type: NodePort
+  selector:
+    app: a3-probe-pod
+  ports:  
+  - protocol: TCP
+    port: 80          # Cluster port
+    targetPort: 8080  # Container port
+    nodePort: 30010   # External port
+---
+
+# Set headless service (required) for StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: a3-headless-service
+  namespace: rgill201
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+    name: http
+  clusterIP: None # Makes it a headless service
+  selector:
+    app: a3-pod
+---
+
+# Set StatefulSet workload (for stable network names and persistence)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: a3-statefulset
+  namespace: rgill201
+spec:
+  serviceName: "a3-headless-service"
+  replicas: 1 # Minimum replicas set to 1 for HPA
+  selector:
+    matchLabels:
+      app: a3-pod
+  template:
+    metadata:
+      labels:
+        app: a3-pod
+    spec:
+      containers:
+      - name: a3-container
+        image: ravinderjit/assignment3:latest
+        imagePullPolicy: Always
+        resources:
+          # Required for HPA
+          limits:
+            cpu: "500m" # Limit to 0.5 CPU core
+          requests:
+            cpu: "250m" # Request 0.25 CPU core
+            memory: "128Mi"
+        ports:
+        - containerPort: 8080
+        
+        # Volume mount for persistence
+        volumeMounts:
+        - name: a3-persistence-volume
+          mountPath: /data # Matches DATA_DIR in index.php
+        
+        # Probe setup (use cURL on cluster port 80)
+        readinessProbe:
+          exec: 
+            command:
+            - /bin/sh
+            - -c
+            - "curl -s -f a3-probe-service.probe.svc.cluster.local:80/isalive | grep -q 'true'"
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+
+        # Environment variables
+        env:
+        - name: configValue
+          valueFrom:
+            configMapKeyRef:
+              name: a2-config-map
+              key: configValue    
+        - name: secretValue
+          valueFrom:
+            secretKeyRef:
+              name: a2-secret
+              key: secretValue
+        - name: envValue
+          value: environmentSnake
+  
+  # Volume claim template for persistence
+  volumeClaimTemplates:
+  - metadata:
+      name: a3-persistence-volume
+    spec:
+      # Use ReadWriteOnce for single pod access
+      accessModes: [ "ReadWriteOnce" ] 
+      resources:
+        requests:
+          storage: 1Gi # Request 1 Gigabyte of storage
+---
+
+# Set LoadBalancer service 
+apiVersion: v1
+kind: Service
+metadata:
+  name: a3-loadbalancer-service
+  namespace: rgill201
+spec:
+  type: LoadBalancer
+  selector:
+    app: a3-pod
+  ports:  
+  - protocol: TCP
+    port: 80 # Cluster port
+    targetPort: 8080 # Container port
+---
+
+# Set NodePort service config for localhost:30000
+# (LoadBalancer service won't show an accessible port in Docker Desktop)
+apiVersion: v1
+kind: Service
+metadata:
+  name: a3-nodeport-service
+  namespace: rgill201
+spec:
+  type: NodePort
+  selector:
+    app: a3-pod
+  ports:
+    - protocol: TCP
+      port: 80          # Cluster access port
+      targetPort: 8080  # Container port
+      nodePort: 30000   # External access port (Meets curl requirement)
+---
+
+# Set HorizontalPodAutoscaler (HPA)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: a3-hpa
+  namespace: rgill201
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: a3-statefulset
+  minReplicas: 1 # Min replicas
+  maxReplicas: 5 # Max replicas
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 30 # Average CPU utilization requirement

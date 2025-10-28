@@ -182,7 +182,7 @@ spec:
     targetPort: 8080 # Container port
 ---
 
-# Set NodePort service config for localhost:30000
+# Set NodePort service for localhost:30000
 # (LoadBalancer service won't show an accessible port in Docker Desktop)
 apiVersion: v1
 kind: Service
@@ -197,7 +197,7 @@ spec:
     - protocol: TCP
       port: 80          # Cluster access port
       targetPort: 8080  # Container port
-      nodePort: 30000   # External access port (Meets curl requirement)
+      nodePort: 30000   # External access port
 ---
 
 # Set HorizontalPodAutoscaler (HPA)

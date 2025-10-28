@@ -59,7 +59,7 @@ spec:
               name: a2-secret
               key: secretValue
         - name: envValue
-          value: environmentElephant
+          value: environmentSnake
 ---
 # Set NodePort service
 apiVersion: v1

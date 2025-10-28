@@ -80,8 +80,8 @@ kubectl get all -n probe
 ```
 **cURL HTTP**
 ```
-curl -H "Content-Type: application/json" -X POST --data '{"data": "savedSnake"}' localhost:30000/savestring
+curl -H "Content-Type: application/json" -X POST --data '{"data": "savedSnake"}' localhost:30000/saveString
 ```
 ```
-curl localhost:30000/getstring
+curl localhost:30000/getString
 ```

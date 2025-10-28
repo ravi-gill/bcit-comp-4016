@@ -58,3 +58,30 @@ curl localhost:30000/secretValue
 ```
 curl localhost:30000/envValue
 ```
+### ASSIGNMENT 3
+
+**Directory**
+```
+a3
+```
+**Image**
+```
+docker.io/ravinderjit/assignment3:latest
+```
+**Kubernetes Manifest**
+```
+k8s-manifest.yaml
+```
+**Command(s)**
+```
+kubectl apply -f k8s-config.yaml
+kubectl get all -n rgill201
+kubectl get all -n probe
+```
+**cURL HTTP**
+```
+curl -H "Content-Type: application/json" -X POST --data '{"data": "savedSnake"}' localhost:30000/savestring
+```
+```
+curl localhost:30000/getstring
+```

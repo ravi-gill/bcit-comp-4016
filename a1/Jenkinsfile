@@ -4,7 +4,7 @@ pipeline {
     environment {
         // Define the image name (must include Docker Hub username for push)
         APP_IMAGE_NAME = 'ravinderjit/assignment1'
-        APP_CONTAINER_NAME = 'project_a1'
+        APP_CONTAINER_NAME = 'a1'
         APP_PORT = '8080'        
         DOCKER_BIN = '/usr/bin/docker'
         

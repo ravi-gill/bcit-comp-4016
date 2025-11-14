@@ -21,11 +21,11 @@ if ($method === 'GET' && $uri === '/foo') {
 }
 
 // GET request for /marco
-if ($method === 'GET' && $uri === '/marco') {
-    http_response_code(200);
-    echo "polo\n";
-    exit;
-}
+// if ($method === 'GET' && $uri === '/marco') {
+//     http_response_code(200);
+//     echo "polo\n";
+//     exit;
+// }
 
 // GET request for /kill
 if ($method === 'GET' && $uri === '/kill') {
